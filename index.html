@@ -9,7 +9,7 @@
 <meta property="og:url" content="https://hochzeit.danijel-mojsilovic.com/">
 <meta property="og:title" content="Judith &amp; Danijel · 25. September 2027">
 <meta property="og:description" content="Wir sagen Ja, am 25. September 2027 im Landhotel Waldheim in Pliezhausen. Bitte gebt uns bis zum 1. Februar 2027 Bescheid.">
-<meta property="og:image" content="https://hochzeit.danijel-mojsilovic.com/fotos/hero.jpg">
+<meta property="og:image" content="https://hochzeit.danijel-mojsilovic.com/fotos/einladung.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20width%3D%2764%27%20height%3D%2764%27%20rx%3D%2716%27%20fill%3D%27%23E5EDE2%27/%3E%3Ctext%20x%3D%2732%27%20y%3D%2742%27%20font-family%3D%27Georgia%2Cserif%27%20font-style%3D%27italic%27%20font-size%3D%2728%27%20text-anchor%3D%27middle%27%20fill%3D%27%23222B52%27%3EJ%C2%B7D%3C/text%3E%3C/svg%3E">
 <title>Judith &amp; Danijel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -113,18 +113,14 @@ a { color: inherit; }
   padding-block: 1.25rem;
 }
 .monogram {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 1.5rem;
+  font-family: var(--script);
+  font-size: 2rem;
+  line-height: 1;
+  padding-left: .15em;
   text-decoration: none;
   color: var(--ink);
 }
-.monogram span {
-  font-family: var(--script);
-  font-style: normal;
-  color: var(--sage);
-  margin-inline: .12em;
-}
+.monogram span { color: var(--sage); margin-inline: .08em; }
 .topnav { display: flex; align-items: center; gap: 1.75rem; }
 .topnav a {
   font-size: .8125rem;
@@ -150,21 +146,19 @@ a { color: inherit; }
 .names {
   display: flex;
   flex-direction: column;
-  font-size: clamp(3.4rem, 11vw, 7.25rem);
-  font-style: italic;
-  line-height: .95;
-  letter-spacing: -.01em;
+  font-family: var(--script);
+  font-size: clamp(4.25rem, 14vw, 8.5rem);
+  line-height: 1.02;
+  padding-left: .2em;
 }
 .names .amp {
-  font-family: var(--script);
-  font-style: normal;
-  font-size: .6em;
+  font-size: .7em;
   line-height: 1;
   color: var(--sage);
   padding-left: 1.1em;
-  margin-block: .02em -.08em;
+  margin-block: -.05em -.12em;
 }
-.names .n2 { padding-left: .75em; }
+.names .n2 { padding-left: .7em; }
 .date-long {
   display: flex;
   flex-wrap: wrap;
@@ -231,21 +225,32 @@ a { color: inherit; }
 }
 .arch { border-radius: 50% 50% 0 0 / 40% 40% 0 0; }
 
-.hero-photo { position: relative; margin: 0 14px 14px 0; width: 100%; max-width: 26rem; justify-self: end; }
+/* Die Einladungskarte liegt als Karte im Ganzen da, mit versetzter Sandstein-Linie dahinter */
+.hero-photo { position: relative; margin: 0 14px 14px 0; width: 100%; max-width: 23rem; justify-self: end; }
 .hero-photo::before {
   content: "";
   position: absolute;
   inset: 14px -14px -14px 14px;
   border: 1px solid var(--sand);
-  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+  border-radius: 6px;
   pointer-events: none;
   animation: lift 1.3s .35s cubic-bezier(.2, .7, .2, 1) both;
 }
-.hero-photo .ph { position: relative; z-index: 1; }
+.hero-photo .ph {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  box-shadow: 0 30px 60px -32px var(--shadow);
+}
 
 @media (max-width: 800px) {
   .hero-grid { grid-template-columns: minmax(0, 1fr); }
-  .hero-photo { justify-self: center; max-width: 19rem; }
+  .hero-text { align-items: center; text-align: center; }
+  .names { align-items: center; padding-left: 0; }
+  .names .amp, .names .n2 { padding-left: 0; }
+  .date-long { justify-content: center; }
+  .hero-photo { justify-self: center; margin: 0 auto 14px; max-width: 19rem; }
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -467,7 +472,7 @@ a { color: inherit; }
         <a class="btn" href="#antwort">Zu- oder Absage geben</a>
       </div>
       <figure class="hero-photo">
-        <div class="ph arch"><img src="fotos/hero.jpg" alt="Judith und Danijel lächeln eng umarmt, Judith hält ihren Brautstrauß" width="1000" height="1250"></div>
+        <div class="ph"><img src="fotos/einladung.jpg" alt="Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen" width="1024" height="1535"></div>
       </figure>
     </div>
   </section>
@@ -515,7 +520,7 @@ a { color: inherit; }
       <div class="band-intro">
         <p class="eyebrow">u. A. w. g. · um Antwort wird gebeten</p>
         <h2>Feiert ihr mit uns?</h2>
-        <p class="band-lead">Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid. Dann können wir in Ruhe planen.</p>
+        <p class="band-lead">Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid.</p>
         <div class="qr">
           <div class="qr-tile" id="qr"><div class="qr-empty">QR-Code zur Antwortseite</div></div>
           <p class="qr-text">Lieber am Handy antworten? Code scannen und direkt hier landen.</p>
@@ -571,7 +576,7 @@ a { color: inherit; }
 
           <div class="field">
             <label class="lbl" for="f-msg">Ein paar Worte an uns <span class="optional">(freiwillig)</span></label>
-            <textarea id="f-msg" name="nachricht" rows="3"></textarea>
+            <textarea id="f-msg" name="nachricht" rows="3" placeholder="z. B. Essensunverträglichkeiten"></textarea>
           </div>
 
           <p class="form-error" id="f-error" role="alert" hidden></p>
