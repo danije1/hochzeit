@@ -19,7 +19,7 @@
 <title>Judith &amp; Danijel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Jost:wght@300;400;500&family=Pinyon+Script&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Jost:wght@300;400;500&family=Pinyon+Script&family=Caveat:wght@500&display=swap">
 <style>
 /* Layout: eine Einladungskarte, die sich zur Seite entfaltet. Namen als Kaskade in großer Bodoni-Kursive neben einem Bogenfoto,
    darunter Wann & Wo, eine Galerie in Bogen- und Rechteckrahmen, und die Antwortkarte auf einem hellen Eukalyptus-Band.
@@ -48,9 +48,20 @@
   --ph-2: #CCD8C6;
   --ph-hi: #F7FAF4;
   --shadow: #222B5226;
+  --card-shadow-near: #222B521A;
+  --card-shadow-far: #222B5224;
+
+  /* Rückseite der Einladungskarte: ein heller Gegenstand, bleibt in beiden Farbschemen hell */
+  --note-paper: #F7ECE2;
+  --note-paper-2: #F0E0D2;
+  --note-paper-hi: #FCF6F0;
+  --note-ink: #2A3159;
+  --note-gold: #9C6A2E;
+  --note-shadow: #6B451E47;
 
   --display: "Bodoni Moda", "Bodoni 72", Didot, Georgia, serif;
   --script: "Pinyon Script", "Snell Roundhand", "Apple Chancery", cursive;
+  --hand: "Caveat", "Segoe Print", "Bradley Hand", cursive;
   --body: "Jost", "Futura", "Avenir Next", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -59,7 +70,7 @@
     --sand: #D3B385; --line: #2B3443; --band: #1A2230; --on-band: #EEF2EA; --on-band-soft: #BAC3CA;
     --card: #1F2836; --field: #171E28; --choice: #23332A; --ring: #A6C3A433; --btn-bg: #A6C3A4; --btn-fg: #12171F;
     --error: #FFA39E; --qr-bg: #FFFFFF; --qr-ink: #12171F; --ph-1: #1C2622; --ph-2: #2A3832; --ph-hi: #24302B;
-    --shadow: #00000080; color-scheme: dark;
+    --shadow: #00000080; --card-shadow-near: #00000059; --card-shadow-far: #00000073; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
@@ -67,7 +78,7 @@
   --sand: #D3B385; --line: #2B3443; --band: #1A2230; --on-band: #EEF2EA; --on-band-soft: #BAC3CA;
   --card: #1F2836; --field: #171E28; --choice: #23332A; --ring: #A6C3A433; --btn-bg: #A6C3A4; --btn-fg: #12171F;
   --error: #FFA39E; --qr-bg: #FFFFFF; --qr-ink: #12171F; --ph-1: #1C2622; --ph-2: #2A3832; --ph-hi: #24302B;
-  --shadow: #00000080; color-scheme: dark;
+  --shadow: #00000080; --card-shadow-near: #00000059; --card-shadow-far: #00000073; color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -230,9 +241,30 @@ a { color: inherit; }
 }
 .arch { border-radius: 50% 50% 0 0 / 40% 40% 0 0; }
 
-/* Die Einladungskarte liegt als Karte im Ganzen da, mit versetzter Sandstein-Linie dahinter */
-.hero-photo { position: relative; margin: 0 14px 14px 0; width: 100%; max-width: 23rem; justify-self: end; }
-.hero-photo::before {
+/* Die Einladungskarte: antippen, dann dreht sie sich um und zeigt unseren Text.
+   Alle Maße der Rückseite in cqi, damit der Text bei jeder Kartenbreite gleich umbricht. */
+.hero-photo {
+  position: relative;
+  margin: 0 14px 14px 0;
+  width: 100%;
+  max-width: 25rem;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(14px + .9rem);
+}
+.flip {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 2 / 3;
+  perspective: 1800px;
+  container-type: inline-size;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.flip::before {
   content: "";
   position: absolute;
   inset: 14px -14px -14px 14px;
@@ -241,13 +273,109 @@ a { color: inherit; }
   pointer-events: none;
   animation: lift 1.3s .35s cubic-bezier(.2, .7, .2, 1) both;
 }
-.hero-photo .ph {
-  position: relative;
-  z-index: 1;
-  aspect-ratio: 2 / 3;
-  border-radius: 6px;
-  box-shadow: 0 30px 60px -32px var(--shadow);
+.flip-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform .9s cubic-bezier(.45, .05, .2, 1);
+  animation: peek 1.5s 1.8s ease-in-out 1;
 }
+.flip.touched .flip-inner { animation: none; }
+.flip.is-flipped .flip-inner { transform: rotateY(180deg); }
+@media (hover: hover) {
+  .flip:hover .flip-inner { transform: rotateY(-7deg); }
+  .flip.is-flipped:hover .flip-inner { transform: rotateY(187deg); }
+}
+.face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 1px 3px var(--card-shadow-near), 0 12px 32px -10px var(--card-shadow-far);
+}
+.face-front { transform: rotateY(0deg); background: var(--note-paper); }
+.face-front img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.face-back {
+  transform: rotateY(180deg);
+  background:
+    radial-gradient(120% 70% at 50% 0%, var(--note-paper-hi), transparent 70%),
+    linear-gradient(172deg, var(--note-paper), var(--note-paper-2));
+  color: var(--note-ink);
+}
+.face-back::before,
+.face-back::after {
+  content: "";
+  position: absolute;
+  border: 1px solid var(--note-gold);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.face-back::before { inset: 3.2cqi; opacity: .5; }
+.face-back::after { inset: 4.6cqi; opacity: .28; }
+.note {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3.4cqi;
+  padding: 9cqi 11cqi;
+}
+.note-seal {
+  align-self: center;
+  width: 16cqi;
+  height: 16cqi;
+  filter: drop-shadow(0 .8cqi 1cqi var(--note-shadow));
+}
+.note-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2.8cqi;
+  font-family: var(--hand);
+  font-weight: 500;
+  font-size: 6.6cqi;
+  line-height: 1.25;
+  text-wrap: pretty;
+}
+.note-text p, .note-sign { margin: 0; }
+.note-sign {
+  align-self: flex-end;
+  font-family: var(--script);
+  font-size: 9cqi;
+  line-height: 1.1;
+  color: var(--note-gold);
+}
+.flip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: .55em;
+  padding: .4em .25em;
+  border: 0;
+  background: none;
+  font-family: var(--body);
+  font-size: .75rem;
+  font-weight: 500;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color .2s;
+}
+.flip-hint:hover { color: var(--ink); }
+/* Nur sichtbar, wenn jemand mit der Tastatur dorthin springt */
+.flip-hint:not(:focus-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.flip-hint svg { width: 1.25em; height: 1.25em; transition: transform .7s ease; }
+.flip-hint[aria-pressed="true"] svg { transform: rotate(-180deg); }
+@keyframes peek { 0%, 100% { transform: rotateY(0deg); } 45% { transform: rotateY(-18deg); } }
 
 @media (max-width: 800px) {
   .hero-grid { grid-template-columns: minmax(0, 1fr); }
@@ -255,7 +383,7 @@ a { color: inherit; }
   .names { align-items: center; padding-left: 0; }
   .names .amp, .names .n2 { padding-left: 0; }
   .date-long { justify-content: center; }
-  .hero-photo { justify-self: center; margin: 0 auto 14px; max-width: 19rem; }
+  .hero-photo { justify-self: center; margin: 0 auto 14px; max-width: 21rem; }
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -477,7 +605,28 @@ a { color: inherit; }
         <a class="btn" href="#antwort">Zu- oder Absage geben</a>
       </div>
       <figure class="hero-photo">
-        <div class="ph"><img src="fotos/einladung.jpg" alt="Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen" width="1024" height="1535"></div>
+        <div class="flip" id="flip">
+          <div class="flip-inner">
+            <div class="face face-front">
+              <img src="fotos/einladung.jpg" alt="Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen" width="1024" height="1535">
+            </div>
+            <div class="face face-back" aria-hidden="true">
+              <div class="note">
+                <img class="note-seal" src="fotos/siegel.png" alt="" width="134" height="134">
+                <div class="note-text">
+                  <p>Ihr Lieben,</p>
+                  <p>am 25. September 2027 ist es genau ein Jahr her, dass wir uns auf dem Standesamt das Ja-Wort gegeben haben. Diesen Tag möchten wir mit euch feiern, mit unserer freien Trauung und einem großen Fest.</p>
+                  <p>Es würde uns sehr viel bedeuten, wenn ihr dabei seid. Wir freuen uns auf euch!</p>
+                </div>
+                <p class="note-sign">Judith &amp; Danijel</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="flip-hint" id="flip-btn" aria-pressed="false" aria-controls="flip">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4.5h-4.5"/></svg>
+          <span class="flip-label">Karte umdrehen</span>
+        </button>
       </figure>
     </div>
   </section>
@@ -614,6 +763,27 @@ a { color: inherit; }
     rsvpEndpoint: "https://script.google.com/macros/s/AKfycbz9ssDzQofIJAO2_APpfebFHwPy6_eF_RcZN2om5k5UswuRXFfYWgAIXVInv-HSN0pE/exec", // Web-App-Adresse des Google-Skripts (endet auf /exec)
     siteUrl: "https://hochzeit.danijel-mojsilovic.com" // öffentliche Adresse der Seite, für den QR-Code
   };
+
+  // Einladungskarte umdrehen
+  (function () {
+    const card = document.getElementById("flip");
+    const btn = document.getElementById("flip-btn");
+    if (!card || !btn) return;
+    const front = card.querySelector(".face-front");
+    const back = card.querySelector(".face-back");
+    const label = btn.querySelector(".flip-label");
+    function toggle() {
+      const on = !card.classList.contains("is-flipped");
+      card.classList.add("touched");
+      card.classList.toggle("is-flipped", on);
+      btn.setAttribute("aria-pressed", String(on));
+      front.setAttribute("aria-hidden", String(on));
+      back.setAttribute("aria-hidden", String(!on));
+      label.textContent = on ? "Zur Vorderseite" : "Karte umdrehen";
+    }
+    card.addEventListener("click", toggle);
+    btn.addEventListener("click", toggle);
+  })();
 
   // Countdown bis zum 25.09.2027
   (function () {
