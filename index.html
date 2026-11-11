@@ -518,7 +518,7 @@ a { color: inherit; }
 }
 
 /* Antwort */
-.band { background: var(--band); color: var(--on-band); padding-block: clamp(3.5rem, 9vw, 7rem); }
+.band { background: var(--band); color: var(--on-band); padding-block: clamp(3.5rem, 9vw, 7rem) clamp(2.7rem, 4.8vw, 3.8rem); }
 .band-grid {
   display: grid;
   grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
@@ -530,35 +530,9 @@ a { color: inherit; }
 .band h2 { font-size: clamp(2.4rem, 6vw, 3.75rem); font-style: italic; line-height: 1.02; }
 .band-lead { color: var(--on-band-soft); max-width: 28rem; }
 .band-lead strong { color: var(--on-band); font-weight: 500; }
-.qr { display: flex; align-items: center; gap: 1.25rem; margin-top: 1.25rem; }
-.qr-tile {
-  flex: none;
-  width: 148px;
-  height: 148px;
-  padding: 10px;
-  border-radius: 12px;
-  background: var(--qr-bg);
-  color: var(--qr-ink);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  font-size: .75rem;
-  line-height: 1.35;
-}
-.qr-tile img, .qr-tile canvas { display: block; width: 100%; height: auto; }
-.qr-tile .qr-empty {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: .5rem;
-  border: 1px dashed var(--qr-ink);
-  border-radius: 6px;
-  opacity: .7;
-}
-.qr-text { color: var(--on-band-soft); font-size: .9375rem; max-width: 15rem; }
-@media (max-width: 700px) { .qr { display: none; } }
 @media (max-width: 860px) { .band-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Hält den Platz für das ausgeklappte Formular frei (Höhe setzt das Skript) */
+.card-slot { min-width: 0; }
 
 .card {
   min-width: 0;
@@ -620,12 +594,27 @@ a { color: inherit; }
 .opt input:checked + span::before { border-color: var(--sage); background: var(--sage); box-shadow: inset 0 0 0 3px var(--choice); }
 .opt input:focus-visible + span { outline: 2px solid var(--sage); outline-offset: 2px; }
 .yes-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.yes-fields:not([hidden]) { animation: unfold .35s ease both; }
+@keyframes unfold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 520px) {
   .opts, .yes-fields { grid-template-columns: minmax(0, 1fr); }
 }
 .form-error { color: var(--error); font-size: .9375rem; }
-.rsvp .btn { align-self: flex-start; }
+/* Hinweis direkt neben der Feldbeschriftung, braucht keine eigene Zeile */
+.field-error {
+  margin-left: .6em;
+  font-size: .875rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--error);
+}
+.rsvp input[aria-invalid="true"] { border-color: var(--error); }
+/* Knopf und Fehlermeldung nebeneinander, damit eine Meldung keine eigene Zeile braucht */
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; }
+.form-actions .form-error { flex: 1 1 11rem; min-width: 0; line-height: 1.45; }
+.rsvp .form-actions .btn { align-self: center; }
 
 .thanks { display: flex; flex-direction: column; align-items: flex-start; gap: 1rem; }
 .thanks:focus { outline: none; }
@@ -677,7 +666,7 @@ a { color: inherit; }
   })();
 </script>
 
-<header class="wrap topbar">
+<header class="wrap topbar" id="top">
   <a class="monogram" href="#top" aria-label="Judith und Danijel">J<span>&amp;</span>D</a>
   <nav class="topnav" aria-label="Abschnitte">
     <a href="#details">Wann &amp; Wo</a>
@@ -686,7 +675,7 @@ a { color: inherit; }
   </nav>
 </header>
 
-<main id="top">
+<main>
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="hero-text">
@@ -768,25 +757,21 @@ a { color: inherit; }
   <section class="band" id="antwort">
     <div class="wrap band-grid">
       <div class="band-intro">
-        <p class="eyebrow">u. A. w. g. · um Antwort wird gebeten</p>
+        <p class="eyebrow">Um Antwort wird gebeten</p>
         <h2>Feiert ihr mit uns?</h2>
         <p class="band-lead">Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid.</p>
-        <div class="qr">
-          <div class="qr-tile" id="qr"><div class="qr-empty">QR-Code zur Antwortseite</div></div>
-          <p class="qr-text">Lieber am Handy antworten? Code scannen und direkt hier landen.</p>
-        </div>
       </div>
 
+      <div class="card-slot" id="card-slot">
       <div class="card">
         <form class="rsvp" id="rsvp" novalidate>
           <div class="field">
-            <label class="lbl" for="f-name">Euer Name</label>
-            <input type="text" id="f-name" name="name" autocomplete="name" placeholder="z. B. Anna und Tom Weber">
-            <p class="hint">Kommt ihr zu mehreren, schreibt gern alle Namen.</p>
+            <label class="lbl" for="f-name">Eure Namen <span class="field-error" id="e-name" role="alert" hidden>Bitte eintragen</span></label>
+            <input type="text" id="f-name" name="name" autocomplete="name" placeholder="Bitte alle Namen eintragen">
           </div>
 
           <fieldset>
-            <legend class="lbl">Seid ihr dabei?</legend>
+            <legend class="lbl">Seid ihr dabei? <span class="field-error" id="e-choice" role="alert" hidden>Bitte auswählen</span></legend>
             <div class="opts">
               <label class="opt"><input type="radio" id="f-yes" name="teilnahme" value="ja"><span>Ja, wir kommen gern</span></label>
               <label class="opt"><input type="radio" id="f-no" name="teilnahme" value="nein"><span>Leider können wir nicht</span></label>
@@ -829,8 +814,10 @@ a { color: inherit; }
             <textarea id="f-msg" name="nachricht" rows="3" placeholder="z. B. Essensunverträglichkeiten"></textarea>
           </div>
 
-          <p class="form-error" id="f-error" role="alert" hidden></p>
-          <button type="submit" class="btn" id="f-submit">Antwort senden</button>
+          <div class="form-actions">
+            <button type="submit" class="btn" id="f-submit">Antwort senden</button>
+            <p class="form-error" id="f-error" role="alert" hidden></p>
+          </div>
         </form>
 
         <div class="thanks" id="thanks" tabindex="-1" hidden>
@@ -840,6 +827,7 @@ a { color: inherit; }
           <p class="preview-note" id="preview-note" hidden>Vorschau: Diese Antwort wurde nicht gespeichert. Gespeichert wird, sobald die Seite online ist.</p>
           <button type="button" class="link-btn" id="again">Antwort ändern</button>
         </div>
+      </div>
       </div>
     </div>
   </section>
@@ -852,12 +840,10 @@ a { color: inherit; }
   </div>
 </footer>
 
-<script src="js/qrcode.min.js"></script>
 <script>
   // Hier später eintragen, sobald die Seite online geht:
   const CONFIG = {
-    rsvpEndpoint: "https://script.google.com/macros/s/AKfycbz9ssDzQofIJAO2_APpfebFHwPy6_eF_RcZN2om5k5UswuRXFfYWgAIXVInv-HSN0pE/exec", // Web-App-Adresse des Google-Skripts (endet auf /exec)
-    siteUrl: "https://hochzeit.danijel-mojsilovic.com" // öffentliche Adresse der Seite, für den QR-Code
+    rsvpEndpoint: "https://script.google.com/macros/s/AKfycbz9ssDzQofIJAO2_APpfebFHwPy6_eF_RcZN2om5k5UswuRXFfYWgAIXVInv-HSN0pE/exec" // Web-App-Adresse des Google-Skripts (endet auf /exec)
   };
 
   // Einladungskarte umdrehen
@@ -893,20 +879,6 @@ a { color: inherit; }
     else el.hidden = true;
   })();
 
-  // QR-Code zur Antwort
-  (function () {
-    const tile = document.getElementById("qr");
-    if (!CONFIG.siteUrl || typeof QRCode === "undefined") return;
-    const ink = getComputedStyle(document.documentElement).getPropertyValue("--qr-ink").trim() || "#3D1A25";
-    tile.textContent = "";
-    new QRCode(tile, {
-      text: CONFIG.siteUrl.replace(/#.*$/, "") + "#antwort",
-      width: 128, height: 128,
-      colorDark: ink, colorLight: "#FFFFFF",
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  })();
-
   // Rückmeldung
   (function () {
     const form = document.getElementById("rsvp");
@@ -915,9 +887,35 @@ a { color: inherit; }
     const btn = document.getElementById("f-submit");
     const thanks = document.getElementById("thanks");
 
+    const nameErr = document.getElementById("e-name");
+    const choiceErr = document.getElementById("e-choice");
     form.addEventListener("change", function () {
       const choice = form.elements.teilnahme.value;
       yesFields.hidden = choice !== "ja";
+      if (choice) choiceErr.hidden = true;
+    });
+    form.elements.name.addEventListener("input", function () {
+      nameErr.hidden = true;
+      form.elements.name.removeAttribute("aria-invalid");
+    });
+
+    // Platz für das ausgeklappte Formular vorhalten, damit beim Aufklappen nichts darunter verrutscht.
+    const slot = document.getElementById("card-slot");
+    function reserve() {
+      if (form.hidden) return;
+      const keep = yesFields.hidden;
+      slot.style.minHeight = "";
+      yesFields.hidden = false;
+      const h = slot.getBoundingClientRect().height;
+      yesFields.hidden = keep;
+      slot.style.minHeight = Math.ceil(h) + "px";
+    }
+    reserve();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(reserve);
+    let raf = 0;
+    window.addEventListener("resize", function () {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(reserve);
     });
 
     function showError(msg, field) {
@@ -946,6 +944,7 @@ a { color: inherit; }
     document.getElementById("again").addEventListener("click", function () {
       thanks.hidden = true;
       form.hidden = false;
+      reserve();
       document.getElementById("f-name").focus();
     });
 
@@ -954,8 +953,17 @@ a { color: inherit; }
       err.hidden = true;
       const name = form.elements.name.value.trim();
       const teilnahme = form.elements.teilnahme.value;
-      if (!name) return showError("Bitte tragt euren Namen ein.", form.elements.name);
-      if (!teilnahme) return showError("Bitte wählt aus, ob ihr dabei seid.", document.getElementById("f-yes"));
+      if (!name) {
+        nameErr.hidden = false;
+        form.elements.name.setAttribute("aria-invalid", "true");
+        form.elements.name.focus();
+        return;
+      }
+      if (!teilnahme) {
+        choiceErr.hidden = false;
+        document.getElementById("f-yes").focus();
+        return;
+      }
 
       const yes = teilnahme === "ja";
       const data = {
@@ -982,7 +990,7 @@ a { color: inherit; }
         if (!res.ok || out.ok !== true) throw new Error("Antwort nicht gespeichert");
         showThanks(data, true);
       } catch (_) {
-        showError("Die Antwort konnte nicht gesendet werden. Prüft bitte eure Internetverbindung und versucht es noch einmal.");
+        showError("Senden hat nicht geklappt. Bitte versucht es noch einmal.");
       } finally {
         btn.disabled = false;
         btn.textContent = "Antwort senden";
