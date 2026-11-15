@@ -135,40 +135,95 @@ a { color: inherit; }
 
 /* Kopfzeile */
 .topbar {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-block: 1.25rem;
+  justify-content: flex-end;
+  padding-block: 1rem;
 }
-.monogram {
-  font-family: var(--script);
-  font-size: 2rem;
-  line-height: 1;
-  padding-left: .15em;
-  text-decoration: none;
+
+/* Sprachauswahl: Flagge + Kürzel, darunter ein kleines Menü */
+.lang { position: relative; }
+.lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .5rem .75rem .5rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
   color: var(--ink);
-}
-.monogram span { color: var(--sage); margin-inline: .08em; }
-.topnav { display: flex; align-items: center; gap: 1.75rem; }
-.topnav a {
-  padding-bottom: 3px;
+  font-family: var(--body);
   font-size: .8125rem;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--ink-soft);
-  background: linear-gradient(var(--sand), var(--sand)) left bottom / 0 1px no-repeat;
-  transition: color .2s, background-size .3s ease;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: border-color .2s ease;
 }
-.topnav a:hover, .topnav a:focus-visible { color: var(--ink); background-size: 100% 1px; }
-@media (max-width: 560px) { .topnav a:not(.nav-cta) { display: none; } }
+.lang-btn:hover { border-color: var(--sand); }
+.chev { width: .75rem; height: .75rem; color: var(--ink-soft); transition: transform .25s ease; }
+.lang-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.flag {
+  flex: none;
+  display: block;
+  width: 1.35rem;
+  height: .9rem;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--card-shadow-near);
+}
+.lang-menu {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  z-index: 30;
+  min-width: 11.5rem;
+  margin: 0;
+  padding: .4rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -18px var(--shadow);
+}
+.lang-menu:not([hidden]) { animation: menu-in .18s ease both; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.lang-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .7rem .75rem;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  font-family: var(--body);
+  font-size: .9375rem;
+  line-height: 1.2;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.lang-menu button:hover, .lang-menu button:focus-visible { background: var(--choice); outline: none; }
+.lang-menu button[aria-current="true"] { font-weight: 500; }
+.lang-menu button[aria-current="true"]::after {
+  content: "";
+  margin-left: auto;
+  width: .4rem;
+  height: .4rem;
+  border-radius: 50%;
+  background: var(--sage);
+}
 
 /* Kopf und Namen erst zeigen, wenn die Schriften geladen sind (siehe Skript am Seitenanfang) */
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .topbar { animation: fade .7s ease both; }
 .fonts-wait .topbar, .fonts-wait .hero-text { visibility: hidden; }
 .fonts-wait .topbar, .fonts-wait .hero-text > * { animation: none; }
+/* Bis die gewählte Sprache eingesetzt ist (nur wenn sie nicht Deutsch ist) */
+.i18n-wait .topbar, .i18n-wait main, .i18n-wait footer { visibility: hidden; }
+.i18n-wait .topbar, .i18n-wait .hero-text > * { animation: none; }
 
 /* Beim Laden läuft ein zarter Lichtschein einmal an den Rändern der Namen entlang */
 .names > span { position: relative; animation: halo 2.6s 1s ease-in-out both; }
@@ -194,7 +249,8 @@ a { color: inherit; }
 }
 .names .amp::after { animation-delay: 1.25s; }
 .names .n2::after { animation-delay: 1.5s; }
-.fonts-wait .names > span, .fonts-wait .names > span::after { animation: none; }
+.fonts-wait .names > span, .fonts-wait .names > span::after,
+.i18n-wait .names > span, .i18n-wait .names > span::after { animation: none; }
 @keyframes sweep {
   from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
   to { -webkit-mask-position: 0 0; mask-position: 0 0; }
@@ -605,6 +661,7 @@ a { color: inherit; }
 .field-error {
   margin-left: .6em;
   font-size: .875rem;
+  line-height: 1;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
@@ -648,6 +705,33 @@ a { color: inherit; }
 </head>
 <body>
 <script>
+  // Sprache früh bestimmen: ?lang= in der Adresse, sonst die letzte Wahl, sonst die Sprache des Geräts.
+  // Ist es nicht Deutsch, bleibt der Inhalt kurz verborgen, bis die Übersetzung eingesetzt ist.
+  (function () {
+    var L = ["de", "en", "es", "sr"], pick = "de", root = document.documentElement;
+    try {
+      var q = new URLSearchParams(location.search).get("lang"), saved = null;
+      try { saved = localStorage.getItem("lang"); } catch (_) {}
+      if (q && L.indexOf(q) > -1) pick = q;
+      else if (saved && L.indexOf(saved) > -1) pick = saved;
+      else {
+        var list = navigator.languages || [navigator.language || ""];
+        for (var i = 0; i < list.length; i++) {
+          var c = String(list[i]).toLowerCase().slice(0, 2);
+          if (c === "de" || c === "en" || c === "es") { pick = c; break; }
+          if (c === "sr" || c === "hr" || c === "bs") { pick = "sr"; break; }
+        }
+      }
+    } catch (_) {}
+    root.setAttribute("data-lang", pick);
+    if (pick !== "de") {
+      root.classList.add("i18n-wait");
+      setTimeout(function () { root.classList.remove("i18n-wait"); }, 3000);
+    }
+  })();
+</script>
+
+<script>
   // Kopfbereich erst zeigen, wenn die Schriften da sind, damit keine Ersatzschrift aufblitzt.
   // Spätestens nach 2,5 Sekunden wird er trotzdem angezeigt.
   (function () {
@@ -666,42 +750,56 @@ a { color: inherit; }
   })();
 </script>
 
-<header class="wrap topbar" id="top">
-  <a class="monogram" href="#top" aria-label="Judith und Danijel">J<span>&amp;</span>D</a>
-  <nav class="topnav" aria-label="Abschnitte">
-    <a href="#details">Wann &amp; Wo</a>
-    <a href="#fotos">Fotos</a>
-    <a href="#antwort" class="nav-cta">Antworten</a>
-  </nav>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="flag-de" viewBox="0 0 5 3" preserveAspectRatio="xMidYMid slice"><rect width="5" height="1" fill="#000000"/><rect y="1" width="5" height="1" fill="#DD0000"/><rect y="2" width="5" height="1" fill="#FFCE00"/></symbol>
+  <symbol id="flag-gb" viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice"><rect width="60" height="30" fill="#012169"/><path d="M0 0 60 30M60 0 0 30" stroke="#FFFFFF" stroke-width="6"/><path d="M0 0 60 30M60 0 0 30" stroke="#C8102E" stroke-width="2"/><path d="M30 0v30M0 15h60" stroke="#FFFFFF" stroke-width="10"/><path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/></symbol>
+  <symbol id="flag-co" viewBox="0 0 30 20" preserveAspectRatio="xMidYMid slice"><rect width="30" height="10" fill="#FCD116"/><rect y="10" width="30" height="5" fill="#003893"/><rect y="15" width="30" height="5" fill="#CE1126"/></symbol>
+  <symbol id="flag-rs" viewBox="0 0 30 20" preserveAspectRatio="xMidYMid slice"><rect width="30" height="6.67" fill="#C6363C"/><rect y="6.67" width="30" height="6.67" fill="#0C4076"/><rect y="13.33" width="30" height="6.67" fill="#FFFFFF"/><g transform="translate(10.7 10.4)"><path d="M-2.5-4.55h5l.45-2.1-1.25.75-.95-1.45-.75 1.2L0-7.6l-.5 1.45-.75-1.2-.95 1.45-1.25-.75z" fill="#E8B53A" stroke="#B07D1E" stroke-width=".18" stroke-linejoin="round"/><circle cx="0" cy="-7.95" r=".38" fill="#E8B53A"/><path d="M-3.2-4.4h6.4v4.5C3.2 2.6 1.4 4.1 0 4.8-1.4 4.1-3.2 2.6-3.2.1z" fill="#C6363C" stroke="#E8B53A" stroke-width=".32" stroke-linejoin="round"/><g fill="#FFFFFF"><path d="M-.55-1.35-2.8-3.55-2.95-1.05-2.45-.75-2.65-.05-2.05.0-2.15.75-1.5.6-1.45 1.15-.75.6z"/><path d="M.55-1.35 2.8-3.55 2.95-1.05 2.45-.75 2.65-.05 2.05.0 2.15.75 1.5.6 1.45 1.15.75.6z"/><ellipse cx="0" cy=".15" rx="1" ry="1.8"/><path d="M-.3-1.5-.85-2.65M.3-1.5.85-2.65" stroke="#FFFFFF" stroke-width=".55" stroke-linecap="round"/><circle cx="-.95" cy="-2.95" r=".45"/><circle cx=".95" cy="-2.95" r=".45"/><path d="M-1.3-3.15-1.85-2.85-1.3-2.7zM1.3-3.15 1.85-2.85 1.3-2.7z"/><path d="M-.75 1.65h1.5L0 3.05z"/><path d="M-.5 1.6-.95 2.35M.5 1.6.95 2.35" stroke="#FFFFFF" stroke-width=".3" stroke-linecap="round"/></g><path d="M-.55-.55h1.1v1.25C.55 1.15.25 1.35 0 1.45-.25 1.35-.55 1.15-.55.7z" fill="#C6363C"/><path d="M0-.5V1.35M-.5.25H.5" stroke="#FFFFFF" stroke-width=".2"/><circle cx="-1.55" cy="3.15" r=".36" fill="#E8B53A"/><circle cx="1.55" cy="3.15" r=".36" fill="#E8B53A"/></g></symbol>
+</svg>
+
+<header class="wrap topbar">
+  <div class="lang" id="lang">
+    <button type="button" class="lang-btn" id="lang-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lang-menu" aria-label="Sprache wählen" data-i18n-aria="lang_choose">
+      <svg class="flag" aria-hidden="true" focusable="false"><use href="#flag-de"/></svg>
+      <span class="lang-code" id="lang-code">DE</span>
+      <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <ul class="lang-menu" id="lang-menu" hidden>
+      <li><button type="button" lang="de" data-lang="de"><svg class="flag" aria-hidden="true" focusable="false"><use href="#flag-de"/></svg><span>Deutsch</span></button></li>
+      <li><button type="button" lang="en" data-lang="en"><svg class="flag" aria-hidden="true" focusable="false"><use href="#flag-gb"/></svg><span>English</span></button></li>
+      <li><button type="button" lang="es-CO" data-lang="es"><svg class="flag" aria-hidden="true" focusable="false"><use href="#flag-co"/></svg><span>Español</span></button></li>
+      <li><button type="button" lang="sr-Latn" data-lang="sr"><svg class="flag" aria-hidden="true" focusable="false"><use href="#flag-rs"/></svg><span>Srpski</span></button></li>
+    </ul>
+  </div>
 </header>
 
 <main>
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="hero-text">
-        <p class="eyebrow">Wir sagen Ja</p>
-        <h1 class="names" aria-label="Judith und Danijel">
+        <p class="eyebrow" data-i18n="hero_eyebrow">Wir sagen Ja</p>
+        <h1 class="names" aria-label="Judith und Danijel" data-i18n-aria="names_aria">
           <span class="n1" data-text="Judith">Judith</span>
           <span class="amp" aria-hidden="true" data-text="&amp;">&amp;</span>
           <span class="n2" data-text="Danijel">Danijel</span>
         </h1>
-        <p class="date-long">Samstag <span class="dot" aria-hidden="true">·</span> 25. September 2027</p>
+        <p class="date-long" data-i18n-html="date_long">Samstag <span class="dot" aria-hidden="true">·</span> 25. September 2027</p>
         <p class="countdown" id="countdown">Noch <strong id="days">321</strong> Tage</p>
-        <a class="btn" href="#antwort">Zu- oder Absage geben</a>
+        <a class="btn" href="#antwort" data-i18n="cta">Zu- oder Absage geben</a>
       </div>
       <figure class="hero-photo">
         <div class="flip" id="flip">
           <div class="flip-inner">
             <div class="face face-front">
-              <img src="fotos/einladung.jpg" alt="Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen" width="1024" height="1535">
+              <img src="fotos/einladung.jpg" data-i18n-alt="alt_card" alt="Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen" width="1024" height="1535">
             </div>
             <div class="face face-back" aria-hidden="true">
               <div class="note">
                 <img class="note-seal" src="fotos/siegel.png" alt="" width="134" height="134">
                 <div class="note-text">
-                  <p>Ihr Lieben,</p>
-                  <p>am 25. September 2027 ist es genau ein Jahr her, dass wir uns auf dem Standesamt das Ja-Wort gegeben haben. Diesen Tag möchten wir mit euch feiern, mit unserer freien Trauung und einem großen Fest.</p>
-                  <p>Es würde uns sehr viel bedeuten, wenn ihr dabei seid. Wir freuen uns auf euch!</p>
+                  <p data-i18n="card_1">Ihr Lieben,</p>
+                  <p data-i18n="card_2">am 25. September 2027 ist es genau ein Jahr her, dass wir uns auf dem Standesamt das Ja-Wort gegeben haben. Diesen Tag möchten wir mit euch feiern, mit unserer freien Trauung und einem großen Fest.</p>
+                  <p data-i18n="card_3">Es würde uns sehr viel bedeuten, wenn ihr dabei seid. Wir freuen uns auf euch!</p>
                 </div>
                 <p class="note-sign">Judith &amp; Danijel</p>
               </div>
@@ -719,37 +817,37 @@ a { color: inherit; }
   <section class="section section-tint" id="details">
     <div class="wrap">
       <div class="sec-head">
-        <p class="eyebrow">Wann &amp; Wo</p>
-        <h2>Der große Tag</h2>
+        <p class="eyebrow" data-i18n="details_eyebrow">Wann &amp; Wo</p>
+        <h2 data-i18n="details_h2">Der große Tag</h2>
       </div>
       <div class="details">
         <div class="detail">
-          <p class="detail-label">Datum</p>
-          <p class="detail-value">Samstag,<br>25. September 2027</p>
+          <p class="detail-label" data-i18n="label_date">Datum</p>
+          <p class="detail-value" data-i18n-html="date_value">Samstag,<br>25. September 2027</p>
         </div>
         <div class="detail">
-          <p class="detail-label">Uhrzeit</p>
-          <p class="detail-value">14:30 Uhr</p>
-          <p class="detail-sub">Beginn der freien Trauung</p>
+          <p class="detail-label" data-i18n="label_time">Uhrzeit</p>
+          <p class="detail-value" data-i18n="time_value">14:30 Uhr</p>
+          <p class="detail-sub" data-i18n="time_sub">Beginn der freien Trauung</p>
         </div>
         <div class="detail">
-          <p class="detail-label">Ort</p>
+          <p class="detail-label" data-i18n="label_place">Ort</p>
           <p class="detail-value">Landhotel Waldheim</p>
           <p class="detail-sub">Rübgartener Str. 1<br>72124 Pliezhausen</p>
-          <a class="detail-link" href="https://www.google.com/maps/search/?api=1&amp;query=Landhotel%20Waldheim%2C%20R%C3%BCbgartener%20Str.%201%2C%2072124%20Pliezhausen" target="_blank" rel="noopener">Route planen</a>
+          <a class="detail-link" href="https://www.google.com/maps/search/?api=1&amp;query=Landhotel%20Waldheim%2C%20R%C3%BCbgartener%20Str.%201%2C%2072124%20Pliezhausen" target="_blank" rel="noopener" data-i18n="route">Route planen</a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="fotos" aria-label="Fotos">
+  <section class="section" id="fotos" aria-label="Fotos" data-i18n-aria="photos_aria">
     <div class="wrap">
       <div class="gallery">
-        <figure><div class="ph"><img src="fotos/hecke.jpg" alt="Judith und Danijel vor einer grünen Hecke, Judith mit ihrem Brautstrauß" loading="lazy" decoding="async"></div></figure>
-        <figure><div class="ph"><img src="fotos/tuer.jpg" alt="Judith und Danijel an einer Hauswand aus Sandstein" loading="lazy" decoding="async"></div></figure>
-        <figure><div class="ph"><img src="fotos/garten.jpg" alt="Judith und Danijel lachen gemeinsam im Garten" loading="lazy" decoding="async"></div></figure>
-        <figure class="wide"><div class="ph"><img src="fotos/umarmung.jpg" alt="Judith und Danijel in enger Umarmung vor sonnigem Laub" loading="lazy" decoding="async"></div></figure>
-        <figure class="wide"><div class="ph"><img src="fotos/ringe.jpg" alt="Ihre Hände mit den Eheringen über dem Strauß aus weißen Rosen und Eukalyptus" loading="lazy" decoding="async"></div></figure>
+        <figure><div class="ph"><img src="fotos/hecke.jpg" data-i18n-alt="alt_hecke" alt="Judith und Danijel vor einer grünen Hecke, Judith mit ihrem Brautstrauß" loading="lazy" decoding="async"></div></figure>
+        <figure><div class="ph"><img src="fotos/tuer.jpg" data-i18n-alt="alt_tuer" alt="Judith und Danijel an einer Hauswand aus Sandstein" loading="lazy" decoding="async"></div></figure>
+        <figure><div class="ph"><img src="fotos/garten.jpg" data-i18n-alt="alt_garten" alt="Judith und Danijel lachen gemeinsam im Garten" loading="lazy" decoding="async"></div></figure>
+        <figure class="wide"><div class="ph"><img src="fotos/umarmung.jpg" data-i18n-alt="alt_umarmung" alt="Judith und Danijel in enger Umarmung vor sonnigem Laub" loading="lazy" decoding="async"></div></figure>
+        <figure class="wide"><div class="ph"><img src="fotos/ringe.jpg" data-i18n-alt="alt_ringe" alt="Ihre Hände mit den Eheringen über dem Strauß aus weißen Rosen und Eukalyptus" loading="lazy" decoding="async"></div></figure>
       </div>
     </div>
   </section>
@@ -757,30 +855,30 @@ a { color: inherit; }
   <section class="band" id="antwort">
     <div class="wrap band-grid">
       <div class="band-intro">
-        <p class="eyebrow">Um Antwort wird gebeten</p>
-        <h2>Feiert ihr mit uns?</h2>
-        <p class="band-lead">Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid.</p>
+        <p class="eyebrow" data-i18n="rsvp_eyebrow">Um Antwort wird gebeten</p>
+        <h2 data-i18n="rsvp_h2">Feiert ihr mit uns?</h2>
+        <p class="band-lead" data-i18n-html="rsvp_lead">Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid.</p>
       </div>
 
       <div class="card-slot" id="card-slot">
       <div class="card">
         <form class="rsvp" id="rsvp" novalidate>
           <div class="field">
-            <label class="lbl" for="f-name">Eure Namen <span class="field-error" id="e-name" role="alert" hidden>Bitte eintragen</span></label>
-            <input type="text" id="f-name" name="name" autocomplete="name" placeholder="Bitte alle Namen eintragen">
+            <label class="lbl" for="f-name"><span data-i18n="names_label">Eure Namen</span> <span class="field-error" id="e-name" role="alert" hidden data-i18n="err_name">Bitte eintragen</span></label>
+            <input type="text" id="f-name" name="name" autocomplete="name" placeholder="Bitte alle Namen eintragen" data-i18n-ph="names_ph">
           </div>
 
           <fieldset>
-            <legend class="lbl">Seid ihr dabei? <span class="field-error" id="e-choice" role="alert" hidden>Bitte auswählen</span></legend>
+            <legend class="lbl"><span data-i18n="attend_legend">Seid ihr dabei?</span> <span class="field-error" id="e-choice" role="alert" hidden data-i18n="err_choice">Bitte auswählen</span></legend>
             <div class="opts">
-              <label class="opt"><input type="radio" id="f-yes" name="teilnahme" value="ja"><span>Ja, wir kommen gern</span></label>
-              <label class="opt"><input type="radio" id="f-no" name="teilnahme" value="nein"><span>Leider können wir nicht</span></label>
+              <label class="opt"><input type="radio" id="f-yes" name="teilnahme" value="ja"><span data-i18n="opt_yes">Ja, wir kommen gern</span></label>
+              <label class="opt"><input type="radio" id="f-no" name="teilnahme" value="nein"><span data-i18n="opt_no">Leider können wir nicht</span></label>
             </div>
           </fieldset>
 
           <div class="yes-fields" id="yes-fields" hidden>
             <div class="field">
-              <label class="lbl" for="f-adults">Erwachsene</label>
+              <label class="lbl" for="f-adults" data-i18n="adults">Erwachsene</label>
               <select id="f-adults" name="erwachsene">
                 <option value="1">1</option>
                 <option value="2" selected>2</option>
@@ -791,9 +889,9 @@ a { color: inherit; }
               </select>
             </div>
             <div class="field">
-              <label class="lbl" for="f-kids">Kinder</label>
+              <label class="lbl" for="f-kids" data-i18n="kids">Kinder</label>
               <select id="f-kids" name="kinder">
-                <option value="0" selected>keine</option>
+                <option value="0" selected data-i18n="kids_none">keine</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -810,22 +908,22 @@ a { color: inherit; }
           </div>
 
           <div class="field">
-            <label class="lbl" for="f-msg">Ein paar Worte an uns <span class="optional">(freiwillig)</span></label>
-            <textarea id="f-msg" name="nachricht" rows="3" placeholder="z. B. Essensunverträglichkeiten"></textarea>
+            <label class="lbl" for="f-msg" data-i18n-html="msg_label">Ein paar Worte an uns <span class="optional">(freiwillig)</span></label>
+            <textarea id="f-msg" name="nachricht" rows="3" placeholder="z. B. Essensunverträglichkeiten" data-i18n-ph="msg_ph"></textarea>
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn" id="f-submit">Antwort senden</button>
+            <button type="submit" class="btn" id="f-submit" data-i18n="send">Antwort senden</button>
             <p class="form-error" id="f-error" role="alert" hidden></p>
           </div>
         </form>
 
         <div class="thanks" id="thanks" tabindex="-1" hidden>
-          <p class="thanks-script" aria-hidden="true">Danke</p>
+          <p class="thanks-script" aria-hidden="true" data-i18n="thanks_script">Danke</p>
           <h3 id="thanks-title"></h3>
           <p class="thanks-text" id="thanks-text"></p>
-          <p class="preview-note" id="preview-note" hidden>Vorschau: Diese Antwort wurde nicht gespeichert. Gespeichert wird, sobald die Seite online ist.</p>
-          <button type="button" class="link-btn" id="again">Antwort ändern</button>
+          <p class="preview-note" id="preview-note" hidden data-i18n="preview_note">Vorschau: Diese Antwort wurde nicht gespeichert. Gespeichert wird, sobald die Seite online ist.</p>
+          <button type="button" class="link-btn" id="again" data-i18n="again">Antwort ändern</button>
         </div>
       </div>
       </div>
@@ -846,6 +944,261 @@ a { color: inherit; }
     rsvpEndpoint: "https://script.google.com/macros/s/AKfycbz9ssDzQofIJAO2_APpfebFHwPy6_eF_RcZN2om5k5UswuRXFfYWgAIXVInv-HSN0pE/exec" // Web-App-Adresse des Google-Skripts (endet auf /exec)
   };
 
+  // Übersetzungen. Schlüssel mit _html enthalten etwas Auszeichnung, alle anderen sind reiner Text.
+  const I18N = {
+    de: {
+      lang_choose: "Sprache wählen",
+      hero_eyebrow: "Wir sagen Ja",
+      names_aria: "Judith und Danijel",
+      date_long: 'Samstag <span class="dot" aria-hidden="true">·</span> 25. September 2027',
+      countdown: function (d) { return d === 0 ? "Heute ist es so weit!" : "Noch <strong>" + d + "</strong> " + (d === 1 ? "Tag" : "Tage"); },
+      cta: "Zu- oder Absage geben",
+      alt_card: "Einladungskarte: ein Schwarzweißfoto von Judith und Danijel, die sich küssen, in einem Umschlag mit Wachssiegel und Eukalyptuszweigen",
+      card_1: "Ihr Lieben,",
+      card_2: "am 25. September 2027 ist es genau ein Jahr her, dass wir uns auf dem Standesamt das Ja-Wort gegeben haben. Diesen Tag möchten wir mit euch feiern, mit unserer freien Trauung und einem großen Fest.",
+      card_3: "Es würde uns sehr viel bedeuten, wenn ihr dabei seid. Wir freuen uns auf euch!",
+      flip_front: "Karte umdrehen",
+      flip_back: "Zur Vorderseite",
+      details_eyebrow: "Wann & Wo",
+      details_h2: "Der große Tag",
+      label_date: "Datum",
+      date_value: "Samstag,<br>25. September 2027",
+      label_time: "Uhrzeit",
+      time_value: "14:30 Uhr",
+      time_sub: "Beginn der freien Trauung",
+      label_place: "Ort",
+      route: "Route planen",
+      photos_aria: "Fotos",
+      alt_hecke: "Judith und Danijel vor einer grünen Hecke, Judith mit ihrem Brautstrauß",
+      alt_tuer: "Judith und Danijel an einer Hauswand aus Sandstein",
+      alt_garten: "Judith und Danijel lachen gemeinsam im Garten",
+      alt_umarmung: "Judith und Danijel in enger Umarmung vor sonnigem Laub",
+      alt_ringe: "Ihre Hände mit den Eheringen über dem Strauß aus weißen Rosen und Eukalyptus",
+      rsvp_eyebrow: "Um Antwort wird gebeten",
+      rsvp_h2: "Feiert ihr mit uns?",
+      rsvp_lead: "Bitte gebt uns bis zum <strong>1. Februar 2027</strong> Bescheid, ob ihr dabei seid.",
+      names_label: "Eure Namen",
+      names_ph: "Bitte alle Namen eintragen",
+      err_name: "Bitte eintragen",
+      attend_legend: "Seid ihr dabei?",
+      err_choice: "Bitte auswählen",
+      opt_yes: "Ja, wir kommen gern",
+      opt_no: "Leider können wir nicht",
+      adults: "Erwachsene",
+      kids: "Kinder",
+      kids_none: "keine",
+      msg_label: 'Ein paar Worte an uns <span class="optional">(freiwillig)</span>',
+      msg_ph: "z. B. Essensunverträglichkeiten",
+      send: "Antwort senden",
+      sending: "Wird gesendet …",
+      err_send: "Senden hat nicht geklappt. Bitte versucht es noch einmal.",
+      thanks_script: "Danke",
+      thanks_yes_title: "Wir freuen uns riesig auf euch!",
+      thanks_no_title: "Schade, wir werden euch vermissen.",
+      thanks_yes_text: function (name, a, k) {
+        return "Danke für eure Zusage, " + name + ". Wir planen mit " + a + " Erwachsenen" + (k > 0 ? " und " + k + (k === 1 ? " Kind" : " Kindern") : "") + ".";
+      },
+      thanks_no_text: function (name) { return "Danke, dass ihr uns Bescheid gebt, " + name + "."; },
+      preview_note: "Vorschau: Diese Antwort wurde nicht gespeichert. Gespeichert wird, sobald die Seite online ist.",
+      again: "Antwort ändern"
+    },
+    en: {
+      lang_choose: "Choose language",
+      hero_eyebrow: "We’re getting married",
+      names_aria: "Judith and Danijel",
+      date_long: 'Saturday <span class="dot" aria-hidden="true">·</span> 25 September 2027',
+      countdown: function (d) { return d === 0 ? "Today’s the day!" : "<strong>" + d + "</strong> " + (d === 1 ? "day" : "days") + " to go"; },
+      cta: "RSVP now",
+      alt_card: "Invitation card: a black-and-white photo of Judith and Danijel kissing, in an envelope with a wax seal and sprigs of eucalyptus",
+      card_1: "Dear friends and family,",
+      card_2: "On 25 September 2027, it will be exactly one year since we said “I do” at the registry office. We would love to celebrate that day with you, with our wedding ceremony and a big party.",
+      card_3: "It would mean so much to us to have you there. We can’t wait to see you!",
+      flip_front: "Turn the card over",
+      flip_back: "Back to the front",
+      details_eyebrow: "When & Where",
+      details_h2: "The big day",
+      label_date: "Date",
+      date_value: "Saturday,<br>25 September 2027",
+      label_time: "Time",
+      time_value: "2:30 pm",
+      time_sub: "The ceremony begins",
+      label_place: "Venue",
+      route: "Get directions",
+      photos_aria: "Photos",
+      alt_hecke: "Judith and Danijel in front of a green hedge, Judith holding her bridal bouquet",
+      alt_tuer: "Judith and Danijel by a sandstone wall",
+      alt_garten: "Judith and Danijel laughing together in the garden",
+      alt_umarmung: "Judith and Danijel in a close embrace in front of sunlit leaves",
+      alt_ringe: "Their hands with wedding rings above a bouquet of white roses and eucalyptus",
+      rsvp_eyebrow: "Kindly reply",
+      rsvp_h2: "Will you celebrate with us?",
+      rsvp_lead: "Please let us know by <strong>1 February 2027</strong> whether you can join us.",
+      names_label: "Your names",
+      names_ph: "Please enter everyone’s name",
+      err_name: "Required",
+      attend_legend: "Will you be there?",
+      err_choice: "Please choose",
+      opt_yes: "Yes, we’d love to come",
+      opt_no: "Sadly, we can’t make it",
+      adults: "Adults",
+      kids: "Children",
+      kids_none: "none",
+      msg_label: 'A few words for us <span class="optional">(optional)</span>',
+      msg_ph: "e.g. food allergies or intolerances",
+      send: "Send reply",
+      sending: "Sending …",
+      err_send: "Sending didn’t work. Please try again.",
+      thanks_script: "Thank you",
+      thanks_yes_title: "We can’t wait to celebrate with you!",
+      thanks_no_title: "What a shame, we’ll miss you.",
+      thanks_yes_text: function (name, a, k) {
+        return "Thank you for your reply, " + name + ". We’re planning for " + a + (a === 1 ? " adult" : " adults") + (k > 0 ? " and " + k + (k === 1 ? " child" : " children") : "") + ".";
+      },
+      thanks_no_text: function (name) { return "Thank you for letting us know, " + name + "."; },
+      preview_note: "Preview: this reply was not saved. Replies are saved once the page is online.",
+      again: "Change your reply"
+    },
+    es: {
+      lang_choose: "Elegir idioma",
+      hero_eyebrow: "¡Nos casamos!",
+      names_aria: "Judith y Danijel",
+      date_long: 'Sábado <span class="dot" aria-hidden="true">·</span> 25 de septiembre de 2027',
+      countdown: function (d) { return d === 0 ? "¡Hoy es el gran día!" : (d === 1 ? "Falta" : "Faltan") + " <strong>" + d + "</strong> " + (d === 1 ? "día" : "días"); },
+      cta: "Confirmar asistencia",
+      alt_card: "Tarjeta de invitación: una foto en blanco y negro de Judith y Danijel besándose, en un sobre con sello de lacre y ramitas de eucalipto",
+      card_1: "Queridos familiares y amigos:",
+      card_2: "El 25 de septiembre de 2027 se cumple exactamente un año desde que nos casamos por lo civil. Queremos celebrar ese día con ustedes, con nuestra ceremonia y una gran fiesta.",
+      card_3: "Sería muy especial para nosotros que nos acompañen. ¡Los esperamos con mucha ilusión!",
+      flip_front: "Voltear la tarjeta",
+      flip_back: "Ver el frente",
+      details_eyebrow: "Cuándo y dónde",
+      details_h2: "El gran día",
+      label_date: "Fecha",
+      date_value: "Sábado,<br>25 de septiembre de 2027",
+      label_time: "Hora",
+      time_value: "2:30 p. m.",
+      time_sub: "Inicio de la ceremonia",
+      label_place: "Lugar",
+      route: "Cómo llegar",
+      photos_aria: "Fotos",
+      alt_hecke: "Judith y Danijel frente a un seto verde, Judith con su ramo de novia",
+      alt_tuer: "Judith y Danijel junto a una pared de arenisca",
+      alt_garten: "Judith y Danijel riéndose juntos en el jardín",
+      alt_umarmung: "Judith y Danijel abrazados frente a un follaje iluminado por el sol",
+      alt_ringe: "Sus manos con los anillos de matrimonio sobre el ramo de rosas blancas y eucalipto",
+      rsvp_eyebrow: "Confirmen su asistencia",
+      rsvp_h2: "¿Celebran con nosotros?",
+      rsvp_lead: "Por favor, avísennos a más tardar el <strong>1 de febrero de 2027</strong> si podrán acompañarnos.",
+      names_label: "Sus nombres",
+      names_ph: "Escriban los nombres de todos",
+      err_name: "Campo obligatorio",
+      attend_legend: "¿Nos acompañan?",
+      err_choice: "Elijan una opción",
+      opt_yes: "Sí, con mucho gusto",
+      opt_no: "Lamentablemente no podemos",
+      adults: "Adultos",
+      kids: "Niños",
+      kids_none: "ninguno",
+      msg_label: 'Unas palabras para nosotros <span class="optional">(opcional)</span>',
+      msg_ph: "p. ej., alergias o intolerancias alimentarias",
+      send: "Enviar respuesta",
+      sending: "Enviando …",
+      err_send: "No se pudo enviar. Por favor, inténtenlo de nuevo.",
+      thanks_script: "Gracias",
+      thanks_yes_title: "¡Qué alegría que vengan!",
+      thanks_no_title: "Qué lástima, los vamos a extrañar.",
+      thanks_yes_text: function (name, a, k) {
+        return "Gracias por confirmar, " + name + ". Contamos con " + a + (a === 1 ? " adulto" : " adultos") + (k > 0 ? " y " + k + (k === 1 ? " niño" : " niños") : "") + ".";
+      },
+      thanks_no_text: function (name) { return "Gracias por avisarnos, " + name + "."; },
+      preview_note: "Vista previa: esta respuesta no se guardó. Se guardará cuando la página esté publicada.",
+      again: "Cambiar respuesta"
+    },
+    sr: {
+      lang_choose: "Izaberite jezik",
+      hero_eyebrow: "Venčavamo se",
+      names_aria: "Judith i Danijel",
+      date_long: 'Subota <span class="dot" aria-hidden="true">·</span> 25. septembar 2027.',
+      countdown: function (d) {
+        if (d === 0) return "Danas je taj dan!";
+        return "Još <strong>" + d + "</strong> " + (d % 10 === 1 && d % 100 !== 11 ? "dan" : "dana");
+      },
+      cta: "Potvrdite dolazak",
+      alt_card: "Pozivnica: crno-bela fotografija Judith i Danijela koji se ljube, u koverti sa voštanim pečatom i grančicama eukaliptusa",
+      card_1: "Dragi naši,",
+      card_2: "25. septembra 2027. navršiće se tačno godinu dana od našeg venčanja u opštini. Taj dan želimo da proslavimo sa vama, uz našu ceremoniju venčanja i veliko slavlje.",
+      card_3: "Mnogo bi nam značilo da budete uz nas. Radujemo se vašem dolasku!",
+      flip_front: "Okrenite pozivnicu",
+      flip_back: "Nazad na prednju stranu",
+      details_eyebrow: "Kada i gde",
+      details_h2: "Veliki dan",
+      label_date: "Datum",
+      date_value: "Subota,<br>25. septembar 2027.",
+      label_time: "Vreme",
+      time_value: "14:30 časova",
+      time_sub: "Početak ceremonije venčanja",
+      label_place: "Mesto",
+      route: "Kako stići",
+      photos_aria: "Fotografije",
+      alt_hecke: "Judith i Danijel ispred zelene žive ograde, Judith drži bidermajer",
+      alt_tuer: "Judith i Danijel pored zida od peščara",
+      alt_garten: "Judith i Danijel se zajedno smeju u bašti",
+      alt_umarmung: "Judith i Danijel u čvrstom zagrljaju ispred lišća obasjanog suncem",
+      alt_ringe: "Njihove ruke sa burmama iznad buketa belih ruža i eukaliptusa",
+      rsvp_eyebrow: "Molimo za odgovor",
+      rsvp_h2: "Hoćete li da slavite sa nama?",
+      rsvp_lead: "Molimo vas da nam do <strong>1. februara 2027.</strong> javite da li dolazite.",
+      names_label: "Vaša imena",
+      names_ph: "Upišite imena svih gostiju",
+      err_name: "Obavezno polje",
+      attend_legend: "Da li dolazite?",
+      err_choice: "Izaberite odgovor",
+      opt_yes: "Da, rado dolazimo",
+      opt_no: "Nažalost, ne možemo",
+      adults: "Odrasli",
+      kids: "Deca",
+      kids_none: "nema",
+      msg_label: 'Nekoliko reči za nas <span class="optional">(nije obavezno)</span>',
+      msg_ph: "npr. alergije ili netolerancija na hranu",
+      send: "Pošaljite odgovor",
+      sending: "Šalje se …",
+      err_send: "Slanje nije uspelo. Pokušajte ponovo.",
+      thanks_script: "Hvala",
+      thanks_yes_title: "Jedva čekamo da vas vidimo!",
+      thanks_no_title: "Šteta, nedostajaćete nam.",
+      thanks_yes_text: function (name, a, k) {
+        return "Hvala na potvrdi, " + name + ". Broj gostiju: odrasli " + a + (k > 0 ? ", deca " + k : "") + ".";
+      },
+      thanks_no_text: function (name) { return "Hvala što ste nam javili, " + name + "."; },
+      preview_note: "Pregled: ovaj odgovor nije sačuvan. Odgovori se čuvaju kada stranica bude objavljena.",
+      again: "Promenite odgovor"
+    }
+  };
+  const LANGS = {
+    de: { html: "de", code: "DE", flag: "de" },
+    en: { html: "en", code: "EN", flag: "gb" },
+    es: { html: "es-CO", code: "ES", flag: "co" },
+    sr: { html: "sr-Latn", code: "SR", flag: "rs" }
+  };
+  let LANG = LANGS[document.documentElement.getAttribute("data-lang")] ? document.documentElement.getAttribute("data-lang") : "de";
+  function t(key) {
+    const v = I18N[LANG][key];
+    return v !== undefined ? v : I18N.de[key];
+  }
+  function applyLang(code) {
+    LANG = LANGS[code] ? code : "de";
+    const root = document.documentElement;
+    root.lang = LANGS[LANG].html;
+    root.setAttribute("data-lang", LANG);
+    document.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.getAttribute("data-i18n")); });
+    document.querySelectorAll("[data-i18n-html]").forEach(function (el) { el.innerHTML = t(el.getAttribute("data-i18n-html")); });
+    [["data-i18n-alt", "alt"], ["data-i18n-ph", "placeholder"], ["data-i18n-aria", "aria-label"]].forEach(function (pair) {
+      document.querySelectorAll("[" + pair[0] + "]").forEach(function (el) { el.setAttribute(pair[1], t(el.getAttribute(pair[0]))); });
+    });
+    document.dispatchEvent(new CustomEvent("langchange"));
+  }
+  applyLang(LANG);
+
   // Einladungskarte umdrehen
   (function () {
     const card = document.getElementById("flip");
@@ -861,8 +1214,13 @@ a { color: inherit; }
       btn.setAttribute("aria-pressed", String(on));
       front.setAttribute("aria-hidden", String(on));
       back.setAttribute("aria-hidden", String(!on));
-      label.textContent = on ? "Zur Vorderseite" : "Karte umdrehen";
+      setLabel();
     }
+    function setLabel() {
+      label.textContent = t(card.classList.contains("is-flipped") ? "flip_back" : "flip_front");
+    }
+    setLabel();
+    document.addEventListener("langchange", setLabel);
     card.addEventListener("click", toggle);
     btn.addEventListener("click", toggle);
   })();
@@ -870,13 +1228,15 @@ a { color: inherit; }
   // Countdown bis zum 25.09.2027
   (function () {
     const el = document.getElementById("countdown");
-    const now = new Date();
-    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-    const days = Math.round((Date.UTC(2027, 8, 25) - today) / 86400000);
-    if (days > 1) el.innerHTML = 'Noch <strong>' + days + '</strong> Tage';
-    else if (days === 1) el.innerHTML = 'Noch <strong>1</strong> Tag';
-    else if (days === 0) el.textContent = "Heute ist es so weit!";
-    else el.hidden = true;
+    function render() {
+      const now = new Date();
+      const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+      const days = Math.round((Date.UTC(2027, 8, 25) - today) / 86400000);
+      if (days < 0) { el.hidden = true; return; }
+      el.innerHTML = t("countdown")(days);
+    }
+    render();
+    document.addEventListener("langchange", render);
   })();
 
   // Rückmeldung
@@ -924,17 +1284,20 @@ a { color: inherit; }
       if (field) field.focus();
     }
 
-    function showThanks(data, saved) {
-      const yes = data.teilnahme === "ja";
-      document.getElementById("thanks-title").textContent = yes
-        ? "Wir freuen uns riesig auf euch!"
-        : "Schade, wir werden euch vermissen.";
-      const a = Number(data.erwachsene);
-      const k = Number(data.kinder);
-      const plan = "Wir planen mit " + a + " Erwachsenen" + (k > 0 ? " und " + k + (k === 1 ? " Kind" : " Kindern") : "") + ".";
+    let last = null;
+    function fillThanks() {
+      if (!last) return;
+      const yes = last.teilnahme === "ja";
+      document.getElementById("thanks-title").textContent = t(yes ? "thanks_yes_title" : "thanks_no_title");
       document.getElementById("thanks-text").textContent = yes
-        ? "Danke für eure Zusage, " + data.name + ". " + plan
-        : "Danke, dass ihr uns Bescheid gebt, " + data.name + ".";
+        ? t("thanks_yes_text")(last.name, Number(last.erwachsene), Number(last.kinder))
+        : t("thanks_no_text")(last.name);
+    }
+    document.addEventListener("langchange", fillThanks);
+
+    function showThanks(data, saved) {
+      last = data;
+      fillThanks();
       document.getElementById("preview-note").hidden = saved;
       form.hidden = true;
       thanks.hidden = false;
@@ -978,7 +1341,7 @@ a { color: inherit; }
       if (!CONFIG.rsvpEndpoint) return showThanks(data, false);
 
       btn.disabled = true;
-      btn.textContent = "Wird gesendet …";
+      btn.textContent = t("sending");
       try {
         // text/plain, damit das Google-Skript die Anfrage ohne Vorab-Prüfung (CORS) annimmt
         const res = await fetch(CONFIG.rsvpEndpoint, {
@@ -990,12 +1353,55 @@ a { color: inherit; }
         if (!res.ok || out.ok !== true) throw new Error("Antwort nicht gespeichert");
         showThanks(data, true);
       } catch (_) {
-        showError("Senden hat nicht geklappt. Bitte versucht es noch einmal.");
+        showError(t("err_send"));
       } finally {
         btn.disabled = false;
-        btn.textContent = "Antwort senden";
+        btn.textContent = t("send");
       }
     });
+  })();
+
+  // Sprachmenü in der Kopfzeile
+  (function () {
+    const wrap = document.getElementById("lang");
+    const btn = document.getElementById("lang-btn");
+    const menu = document.getElementById("lang-menu");
+    const items = Array.prototype.slice.call(menu.querySelectorAll("button[data-lang]"));
+    function sync() {
+      btn.querySelector(".flag use").setAttribute("href", "#flag-" + LANGS[LANG].flag);
+      document.getElementById("lang-code").textContent = LANGS[LANG].code;
+      items.forEach(function (b) { b.setAttribute("aria-current", String(b.getAttribute("data-lang") === LANG)); });
+    }
+    function open(on, focusItem) {
+      menu.hidden = !on;
+      btn.setAttribute("aria-expanded", String(on));
+      if (on && focusItem) (items.filter(function (b) { return b.getAttribute("data-lang") === LANG; })[0] || items[0]).focus();
+    }
+    btn.addEventListener("click", function (e) { open(menu.hidden, e.detail === 0); });
+    items.forEach(function (b) {
+      b.addEventListener("click", function () {
+        const code = b.getAttribute("data-lang");
+        try { localStorage.setItem("lang", code); } catch (_) {}
+        applyLang(code);
+        open(false);
+        btn.focus();
+      });
+    });
+    document.addEventListener("click", function (e) { if (!menu.hidden && !wrap.contains(e.target)) open(false); });
+    wrap.addEventListener("focusout", function (e) { if (!menu.hidden && !wrap.contains(e.relatedTarget)) open(false); });
+    wrap.addEventListener("keydown", function (e) {
+      if (menu.hidden) return;
+      if (e.key === "Escape") { open(false); btn.focus(); }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const i = items.indexOf(document.activeElement);
+        const n = i < 0 ? 0 : (i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+        items[n].focus();
+      }
+    });
+    document.addEventListener("langchange", sync);
+    sync();
+    document.documentElement.classList.remove("i18n-wait");
   })();
 </script>
 </body>
